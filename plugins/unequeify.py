@@ -12,7 +12,6 @@ from pyrogram.file_id import FileId
 from pyrogram import Client, filters, enums 
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 import struct
-from pyrogram.errors import MessageNotModified  # Added import
 
 # Don't Remove Credit Tg - @VJ_Botz
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
@@ -70,21 +69,6 @@ def unpack_new_file_id(new_file_id):
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
-async def safe_edit_message(message, text, reply_markup=None):
-    """Safely edit message handling MessageNotModified error"""
-    try:
-        await message.edit(text, reply_markup=reply_markup)
-    except MessageNotModified:
-        # Message is already up to date, we can safely ignore this error
-        pass
-    except Exception as e:
-        # For other errors, you might want to handle them differently
-        raise e
-
-# Don't Remove Credit Tg - @VJ_Botz
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
-
 @Client.on_message(filters.command("unequify") & filters.private)
 async def unequify(client, message):
    user_id = message.from_user.id
@@ -128,73 +112,40 @@ async def unequify(client, message):
    except:
        await sts.edit(f"**please make your [userbot](t.me/{_bot['username']}) admin in target chat with full permissions**")
        return await bot.stop()
-   
-   # Use a set for faster lookups and better memory management
-   MESSAGES = set()
+   MESSAGES = []
    DUPLICATE = []
-   total = deleted = 0
+   total=deleted=0
    temp.lock[user_id] = True
    temp.CANCEL[user_id] = False
-   
-   # Variables to track status updates
-   last_update_total = 0
-   last_update_deleted = 0
-   
    try:
-     await safe_edit_message(sts, Script.DUPLICATE_TEXT.format(total, deleted, "ᴘʀᴏɢʀᴇssɪɴɢ"), reply_markup=CANCEL_BTN)
+     await sts.edit(Script.DUPLICATE_TEXT.format(total, deleted, "ᴘʀᴏɢʀᴇssɪɴɢ"), reply_markup=CANCEL_BTN)
      async for message in bot.search_messages(chat_id=chat_id, filter=enums.MessagesFilter.DOCUMENT):
         if temp.CANCEL.get(user_id) == True:
-           await safe_edit_message(sts, Script.DUPLICATE_TEXT.format(total, deleted, "ᴄᴀɴᴄᴇʟʟᴇᴅ"), reply_markup=COMPLETED_BTN)
+           await sts.edit(Script.DUPLICATE_TEXT.format(total, deleted, "ᴄᴀɴᴄᴇʟʟᴇᴅ"), reply_markup=COMPLETED_BTN)
            return await bot.stop()
-        
         file = message.document
         file_id = unpack_new_file_id(file.file_id) 
-        
         if file_id in MESSAGES:
            DUPLICATE.append(message.id)
         else:
-           MESSAGES.add(file_id)
-        
+           MESSAGES.append(file_id)
         total += 1
-        
-        # Update status only when there's a significant change (every 1000 messages or 100 deletions)
-        if total % 1000 == 0 or (deleted - last_update_deleted) >= 100:
-            # Only update if there are actual changes to report
-            if total != last_update_total or deleted != last_update_deleted:
-                await safe_edit_message(sts, Script.DUPLICATE_TEXT.format(total, deleted, "ᴘʀᴏɢʀᴇssɪɴɢ"), reply_markup=CANCEL_BTN)
-                last_update_total = total
-                last_update_deleted = deleted
-        
-        # Process duplicates in batches to avoid memory issues
+        if total %1000 == 0:
+           await sts.edit(Script.DUPLICATE_TEXT.format(total, deleted, "ᴘʀᴏɢʀᴇssɪɴɢ"), reply_markup=CANCEL_BTN)
         if len(DUPLICATE) >= 100:
-           try:
-               await bot.delete_messages(chat_id, DUPLICATE)
-               deleted += len(DUPLICATE)
-               # Update status after deletion
-               if deleted != last_update_deleted:
-                   await safe_edit_message(sts, Script.DUPLICATE_TEXT.format(total, deleted, "ᴘʀᴏɢʀᴇssɪɴɢ"), reply_markup=CANCEL_BTN)
-                   last_update_deleted = deleted
-               DUPLICATE = []
-           except Exception as e:
-               # Log error but continue processing
-               print(f"Error deleting messages: {e}")
-               DUPLICATE = []
-     
-     # Process any remaining duplicates
+           await bot.delete_messages(chat_id, DUPLICATE)
+           deleted += 100
+           await sts.edit(Script.DUPLICATE_TEXT.format(total, deleted, "ᴘʀᴏɢʀᴇssɪɴɢ"), reply_markup=CANCEL_BTN)
+           DUPLICATE = []
      if DUPLICATE:
-        try:
-            await bot.delete_messages(chat_id, DUPLICATE)
-            deleted += len(DUPLICATE)
-        except Exception as e:
-            print(f"Error deleting remaining messages: {e}")
-   
+        await bot.delete_messages(chat_id, DUPLICATE)
+        deleted += len(DUPLICATE)
    except Exception as e:
        temp.lock[user_id] = False 
        await sts.edit(f"**ERROR**\n`{e}`")
        return await bot.stop()
-   
    temp.lock[user_id] = False
-   await safe_edit_message(sts, Script.DUPLICATE_TEXT.format(total, deleted, "ᴄᴏᴍᴘʟᴇᴛᴇᴅ"), reply_markup=COMPLETED_BTN)
+   await sts.edit(Script.DUPLICATE_TEXT.format(total, deleted, "ᴄᴏᴍᴘʟᴇᴛᴇᴅ"), reply_markup=COMPLETED_BTN)
    await bot.stop()
 
 # Don't Remove Credit Tg - @VJ_Botz
